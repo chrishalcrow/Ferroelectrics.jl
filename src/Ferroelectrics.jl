@@ -4,10 +4,15 @@ using Roots, ForwardDiff
 using LinearAlgebra
 using Makie, GLMakie, CairoMakie, LaTeXStrings
 using DifferentialEquations, DiffEqCallbacks
+using FileIO
+
+export dpot
+
+export export_arrow, SLf1, SLf2, SLden, stringfig, stringfig2, SLEXT
 
 
 export imusingnotebook, imusingterminal, ConnectVacThroughAnotherVac, setgrid, InterpolateWalls
-export xyzfsrt, srtfxyz, inbfsrt, srtfinb, getR2, getRvac, orderedtanhs
+export xyzfsrt, srtfxyz, inbfsrt, srtfinb, getR2, getRvac, orderedtanhs, flow_s!
 
 include("Parameters.jl")
 export set_parameters!, get_As
@@ -19,7 +24,7 @@ include("Derivatives.jl")
 export dxDsing, d2xDsing
 
 include("Properties.jl")
-export baryon
+export baryon, PotEng
 
 include("DiffRAK.jl")
 export flow2DRAK!, flow2DRAKeng!, flow2DRAKno!, flow2DRAKnoN!
@@ -33,18 +38,25 @@ export getfreqs, getvecs, getH
 
 include("2D.jl")
 export flow2Del!, energy2Del, flow2D!, makeSkyrmeLine, getDDu!, getDDP!, dEdP2Dsf!, setgrid2D, energy2D, dEdP2Ds!, updateYbdy!
-export energy2Del_noED
+export energy2Del_noED, flow2D
+
+include("String2D.jl")
+export makeString, dist, string_length, string_positions, resample_string
+
 
 include("Plots2D.jl")
 export arrowplot, one_surface, two_surfaces, plot_surfaces, plot_strain_and_QPP, arrow_and_contour_plot
 
+export arrow_and_contour_and_surface_plot, arrow_and_contour_plot2, arrow_and_contour_plot2D
+
 include("Elastic.jl")
 export getnbasis, getcs, get_C2m, GramSchmidtC, getALLcs, makeϵbf!, getc00, DOT_C, getQPP!, get_ϵbestL!, dotC, DOT_NO_C, get_ϵbestL_no_compat!
-export check_compat_pt
+export check_compat_pt, get_string_energy
 
 
 include("Figs/Fig5.jl")
 include("Figs/Fig4.jl")
+export getPts
 include("Figs/Fig6.jl")
 include("Figs/Fig8.jl")
 include("Figs/Fig9.jl")
@@ -52,6 +64,9 @@ include("Figs/Fig10.jl")
 include("Figs/Fig11.jl")
 export fig5, getf4data, makefig5, getfig5data, getfig6data, makefig6,  getfig7data, makefig7, makefig8, makefig10
 export getfig10data, getfig8data, flowRAKfig9!, makefig9, makefig11, makefig7, makefig5B
+
+
+
 
 
 function InterpolateWalls(solT,solB,x,y)
@@ -148,6 +163,8 @@ function getR2(ss, rr)
 	
 	R2 = zeros(3,3)
 	R2 .= hcat(ss, rr, tt)'
+
+
 	
 	return R2
 	

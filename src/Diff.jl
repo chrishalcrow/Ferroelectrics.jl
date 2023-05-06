@@ -89,11 +89,56 @@ function dEduf!(du,u,p,t)
 end
 
 
+
+function dpot(Ppt, A2,A4,R2, a111, a112, a123)
+
+
+	du = zeros(3)
+	R2Pt = zeros(3)
+	dD6 = zeros(3)
+
+	for a in 1:3
+			
+		du[a] = 0.0
+		R2Pt[a] = 0.0 
+
+		for  b in 1:3
+
+			R2Pt[a] += R2[b,a]*Ppt[b]
+			
+			du[a] -= (A2[b,a] + A2[a,b])*Ppt[b]
+			
+			for c in 1:3, d in 1:3
+				du[a] -= (A4[a,b,c,d]+A4[b,a,c,d] + A4[b,c,a,d] + A4[b,c,d,a])*Ppt[b]*Ppt[c]*Ppt[d]
+			end
+
+		end
+		
+	end
+
+	dD6[1] = d1V6(R2Pt, a111, a112, a123)
+	dD6[2] = d2V6(R2Pt, a111, a112, a123)
+	dD6[3] = d3V6(R2Pt, a111, a112, a123)
+
+	for a in 1:3, b in 1:3
+
+		du[a] -= R2[a,b]*dD6[b]
+		
+	end
+
+	return du
+
+end
+
+
+
 function dEduff!(du,u,p,t)
 	
 	N,dx,G2,A2,A4,R2, a111, a112, a123,tf,EList,V0, DDPpt, Ppt, dD6, R2Pt = p
 	
-
+	#if(t==0)
+#		println(a111, a112, a123)
+#	end
 	
 	
 	#DDPpt = zeros(3)
@@ -118,7 +163,7 @@ function dEduff!(du,u,p,t)
 
 				R2Pt[a] += R2[b,a]*Ppt[b]
 
-				du[a,i] -= -G2[a,b]*DDPpt[b]
+				du[a,i] += G2[a,b]*DDPpt[b]
 				
 				du[a,i] -= 2.0*(A2[a,b])*Ppt[b]
 				
@@ -139,6 +184,10 @@ function dEduff!(du,u,p,t)
 			du[a,i] -= R2[a,b]*dD6[b]
 			
 		end
+
+		#if(t==0)
+	#		println(du[1,i], ", ")
+	#	end
 			
 
     end

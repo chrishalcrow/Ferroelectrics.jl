@@ -148,12 +148,12 @@ function set_parameters!(G2,A2t,A4t,T,R2,phase;  im2D=false)
 	if phase == "rho"
 		fr(p) = Vo([p,p,p]./sqrt(3.0),A2o,A4ot,a111,a112,a123)
 		Dr(fr) = p -> ForwardDiff.derivative(fr,float(p))
-		p0 = find_zero( Dr(fr), (0.1,0.75) )
+		p0 = find_zero( Dr(fr), (0.1,1.5) )
 		PV .= [p0,p0,p0]./sqrt(3.0)
 	elseif phase == "oct"
 		fo(p) = Vo([p,p,0.0]./sqrt(2.0),A2o,A4ot,a111,a112,a123)
 		Do(fo) = p -> ForwardDiff.derivative(fo,float(p))
-		p0 = find_zero( Do(fo), (0.1,1.0) )
+		p0 = find_zero( Do(fo), (0.1,1.5) )
 		PV .= [p0,p0,0.0]./sqrt(2.0)
 	elseif phase == "tet"
 		ft(p) = Vo([p,0.0,0.0],A2o,A4ot,a111,a112,a123)
@@ -172,7 +172,7 @@ function set_parameters!(G2,A2t,A4t,T,R2,phase;  im2D=false)
 	A4ot ./= abs(a1)/p0^2
 	q4o ./= abs(a1)
 	G4o /= G11
-	Q4o ./= p0^2
+	Q4o .*= p0^2
 	C4o ./= abs(a1)*p0^2
 	
 	PV ./= norm(PV)

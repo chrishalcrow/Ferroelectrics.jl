@@ -111,7 +111,7 @@ function flow2Del!(P0,ϵ0,Nloops,dt,pars,elasticstuff;testenergy=false,compat=tr
 
    		#P0 .-= dt.*dedp
 
-   		updateYbdy!(P0,Nx,Ny)
+   		updateXbdy!(P0,Nx,Ny)
 
    		getQPP!(QPP,Q3,P0,Nx,Ny)
 
@@ -173,10 +173,11 @@ function flow2D!(P0,Nloops,dt,pars,Eext;testenergy=false,Eplot=false, boundary="
     	P0 .-= dt.*dedp
 
     	if boundary == "periodic"
-    		updateYbdy!(P0,Nx,Ny)
+    		updateXbdy!(P0,Nx,Ny)
     	elseif boundary == "neumann"
-    		updateYneu!(P0,Nx,Ny)
+    		updateXneu!(P0,Nx,Ny)
     	end
+
 
 
 		if Eplot == true && c % 1000 == 1
@@ -196,7 +197,68 @@ end
 
 
 
-function makeSkyrmeLine(Nx,Ny,dx,dy,x,y,Lx,Rvac,PV)
+
+
+
+function flow2D(P0,Nloops,dt,pars,Eext;testenergy=false,Eplot=false, boundary="periodic")
+
+
+	if Eplot == true
+		fig =  Figure(resolution = (300, 300))
+		display(fig)
+		ax = Axis(fig[1,1])
+		t0 = 0.0
+	end
+
+	if boundary == "periodic"
+    	println("you're using periodic boundary conditions")
+	elseif boundary == "neumann"
+		println("you're using Neumann boundary conditions")
+	end
+
+	Nx,Ny,dx,dy,G4,A2s,A4s,R2, a111, a112, a123 = pars
+
+		dedp = zeros(3,Nx,Ny);
+
+	if testenergy == true
+		ED = zeros(Nx,Ny)
+		println("initial energy is ", energy2D(P0, ED, G4, A2s, A4s, a111,a112,a123,0.0,R2,Nx, Ny, dx, dy) )
+	end
+
+	for c in 1:Nloops
+
+    	dEdP2Dsf!(dedp,P0,Nx,Ny,dx,dy,G4,A2s,A4s,R2, a111, a112, a123,Eext)
+    	P0 .-= dt.*dedp
+
+    	if boundary == "periodic"
+			updateXbdy!(P0,Nx,Ny)
+		end
+			#	updateYbdy!(P0,Nx,Ny)
+    	#elseif boundary == "neumann"
+    	#	updateYneu!(P0,Nx,Ny)
+    	#end
+
+
+		if Eplot == true && c % 1000 == 1
+			scatter!(ax,Float64(c),energy2D(P0, ED, G4, A2s, A4s, a111,a112,a123,0.0,R2,Nx, Ny, dx, dy) )
+			display(fig)
+		end
+
+    end
+
+    if testenergy == true
+    	ED = zeros(Nx,Ny)
+		println("final energy is ", energy2D(P0, ED, G4, A2s, A4s, a111,a112,a123,0.0,R2,Nx, Ny, dx, dy) )
+	end
+
+	return P0
+
+end
+
+
+
+
+function makeSkyrmeLine(Nx,Ny,dx,dy,x,y,Ly,Rvac,PV)
 
 	P0 = zeros(3,Nx,Ny)
 	Pin = zeros(3,Nx,Ny)
@@ -213,9 +275,9 @@ function makeSkyrmeLine(Nx,Ny,dx,dy,x,y,Lx,Rvac,PV)
     	P0[2,i,j] = 0.0
     	P0[3,i,j] = 0.0
     
-    	Pin[1,i,j] = sin(f(y[j]))*cos(x[i]*2.0*pi/Lx)
-    	Pin[2,i,j] = sin(f(y[j]))*sin(x[i]*2.0*pi/Lx)
-    	Pin[3,i,j] = cos(f(y[j]))
+    	Pin[1,i,j] = sin(f(x[i]))*cos(y[j]*2.0*pi/Ly)
+    	Pin[2,i,j] = sin(f(x[i]))*sin(y[j]*2.0*pi/Ly)
+    	Pin[3,i,j] = cos(f(x[i]))
         
     	for a in 1:3, b in 1:3
         	P0[a,i,j] += Rvac[a,b]*Pin[b,i,j]
@@ -223,11 +285,14 @@ function makeSkyrmeLine(Nx,Ny,dx,dy,x,y,Lx,Rvac,PV)
     
 	end
 
-	updateYbdy!(P0,Nx,Ny)
+	updateXbdy!(P0,Nx,Ny)
 
 	return P0
 
 end
+
+
+
 
 
 function getlevic()
@@ -265,6 +330,8 @@ function baryon(P0, x,y ; BD = zeros(size(x)[1],size(y)[1]) )
 		unitP[:,i,j] = normalize( [P0[1,i,j], P0[2,i,j], P0[3,i,j] ])
 	end
 
+	normer = 1.0/(4.0*pi)
+
 	
     for i in 3:Nx-2, j in 3:Ny-2
         
@@ -275,13 +342,13 @@ function baryon(P0, x,y ; BD = zeros(size(x)[1],size(y)[1]) )
 
         for a in 1:3, b in 1:3, c in 1:3
 
-        	BD[i-2,j-2] += levic[a,b,c]*Ppt[a]*DPpt[b,1]*DPpt[c,2]
+        	BD[i-2,j-2] += levic[a,b,c]*Ppt[a]*DPpt[b,1]*DPpt[c,2]*normer
 
         end
 
     end
 
-    return sum(BD)*dx*dy/(4.0*pi)
+    return sum(BD)*dx*dy
 
 end
 
@@ -590,14 +657,17 @@ end
 function dEdP2Dsf!(dedp,P,Nx,Ny,dx,dy,G4,A2s,A4s,R2, a111, a112, a123,Eext)
 
 	
+	#println(a111, a112, a123)
+		
 	Ppt = zeros(3)
 	DDPpt = zeros(3,2,2)
 
 	dD6 = zeros(3)
 	R2Pt = zeros(3)
 	
-	
-	@inbounds for i in 3:Nx-2, j in 3:Ny-2
+	for j in 3:Ny-2
+	@inbounds for i in 3:Nx-2
+		
 		
 		Ppt[1] = P[1,i,j] 
 		Ppt[2] = P[2,i,j] 
@@ -639,10 +709,29 @@ function dEdP2Dsf!(dedp,P,Nx,Ny,dx,dy,G4,A2s,A4s,R2, a111, a112, a123,Eext)
 			dedp[a,i,j] += R2[a,b]*dD6[b]
 			
 		end
+
+	end
+
+	#println(dedp[1,10,j], ", ")
+
 		
 	end
 	
 	
+end
+
+function updateXbdy!(P0,Nx,Ny)
+
+    @inbounds for a in 1:3, i in 1:Nx
+
+        P0[a,i,1] = P0[a,i,Ny-3]
+        P0[a,i,2] = P0[a,i,Ny-2]
+
+        P0[a,i,Ny-1] = P0[a,i,3]
+        P0[a,i,Ny] = P0[a,i,4]
+
+    end
+			
 end
 
 
@@ -674,6 +763,22 @@ function updateYneu!(P0,Nx,Ny)
     end
 			
 end
+
+
+function updateXneu!(P0,Nx,Ny)
+
+    @inbounds for a in 1:3, i in 1:Nx
+
+        P0[a,i,1] = P0[a,i,3]
+        P0[a,i,2] = P0[a,i,3]
+
+        P0[a,i,Ny-1] = P0[a,i,Ny-2]
+        P0[a,i,Ny] = P0[a,i,Ny-2]
+
+    end
+			
+end
+
 
 
 
