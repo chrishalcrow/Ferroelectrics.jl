@@ -24,6 +24,14 @@ function d2xDsing(phi, i,ls)
 end
 
 
+function dxD(phi, a, i)
+    @inbounds (-phi.field[a,i+2] + 8.0*phi.field[a,i+1] - 8.0*phi.field[a,i-1] + phi.field[a,i-2] )/(12.0*phi.ls)
+end
+
+function d2xD(phi, a,i)
+    @inbounds (-phi.field[a,i+2] + 16.0*phi.field[a,i+1] - 30.0*phi.field[a,i] + 16.0*phi.field[a,i-1] - phi.field[a,i-2] )/(12.0*phi.ls^2)
+end
+
 
 
 
@@ -134,8 +142,33 @@ end
 
 
 function getP(P,i)
-    return [ P[1,i], P[2,i], P[3,i] ]
+    return SVector{3,Float64}(
+        P.field[1,i],
+        P.field[2,i],
+        P.field[3,i]
+         )
 end
+
+function getDP(P,i)
+    
+    return SVector{3,Float64}(
+        dxD(P,1,i),
+        dxD(P,2,i),
+        dxD(P,3,i)
+    )
+        
+end
+
+function getDDP(P,i)
+    
+    return SVector{3,Float64}(
+        d2xD(P,1,i),
+        d2xD(P,2,i),
+        d2xD(P,3,i)
+    )
+        
+end
+
 
 function getDP!(DPpt,P,i,dx)
     
@@ -152,35 +185,3 @@ function getDDP!(DDPpt,P,i,dx)
     end
     
 end
-
-
-function getQPP!(QPP,Q3,P0,Nx,Ny)
-
-    for α in 1:6, i in 1:Nx, j in 1:Ny
-
-        QPP[α,i,j] = 0.0
-
-        for b in 1:3, c in 1:3
-            QPP[α,i,j] += Q3[α,b,c]*P0[b,i,j]*P0[c,i,j]
-        end
-
-    end
-
-end
-
-function getQPP(Q3,P0,Nx,Ny)
-
-    QPP = zeros(6,Nx,Ny)
-
-    for α in 1:6, b in 1:3, c in 1:3, i in 1:Nx, j in 1:Ny
-        #if α == 3
-          #  QPP[α,i,j] = Q3[α+3,b,c]P0[b,i,j]*P0[c,i,j]
-        #else
-            QPP[α,i,j] += Q3[α,b,c]*P0[b,i,j]*P0[c,i,j]
-        #end
-    end
-
-    return QPP
-
-end
-

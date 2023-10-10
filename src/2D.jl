@@ -1,3 +1,37 @@
+function slip(P0, shift,Nx,Ny)
+
+	Pnew = zeros(3,Nx,Ny)
+
+	if shift > 0
+	
+		for a in 1:3, i in 1:Nx
+			for j in 1:shift
+				Pnew[a,i,j] = P0[a,i,2]
+			end
+			for j in shift+1:Ny
+				Pnew[a,i,j] = P0[a,i,-shift+j]
+			end
+		end
+	
+	else
+	
+		for a in 1:3, i in 1:Nx
+			for j in Ny:-1:Ny+shift
+				Pnew[a,i,j] = P0[a,i,Ny]
+			end
+			for j in Ny+shift-1:-1:1
+				Pnew[a,i,j] = P0[a,i,-shift+j]
+			end
+		end
+		
+	end
+
+	return Pnew
+
+end
+
+
+
 
 
 
@@ -111,7 +145,77 @@ function flow2Del!(P0,ϵ0,Nloops,dt,pars,elasticstuff;testenergy=false,compat=tr
 
    		#P0 .-= dt.*dedp
 
-   		updateXbdy!(P0,Nx,Ny)
+   		#updateXbdy!(P0,Nx,Ny)
+
+   		getQPP!(QPP,Q3,P0,Nx,Ny)
+
+   		if compat == true
+			get_ϵbestL!(ϵ0,ϵbasis,QPP,cc00,CL,ncsb,Nx,Ny,dx,dy,Lx,Ly,pmax,qmax,Cabm)
+		else
+			get_ϵbestL_no_compat!(ϵ0,QPP,Nx,Ny)
+		end
+
+		if Eplot == true && c % 10 == 1
+			scatter!(ax,Float64(c),energy2Del_noED(P0, ϵ0, G4, A2s, A4s, C2, q3, a111,a112,a123,0.0,R2,Nx, Ny, dx, dy) )
+			display(fig)
+		end
+	
+
+    	
+
+    end
+
+    if testenergy == true
+    	ED = zeros(Nx,Ny)
+		println("final   energy is ",  energy2Del(P0, ϵ0, ED, G4, A2s, A4s, C2, q3, a111,a112,a123,0.0,R2,Nx, Ny, dx, dy) )
+	end
+
+end
+
+
+
+
+function flow2Del_12!(P0,ϵ0,Nloops,dt,pars,elasticstuff;testenergy=false,compat=true,Eplot=false)
+
+
+	if Eplot == true
+		fig =  Figure(resolution = (300, 300))
+		display(fig)
+		ax = Axis(fig[1,1])
+		t0 = 0.0
+	end
+
+	cc00,CL,ncsb,Lx,Ly,pmax,qmax,Cabm = elasticstuff
+	Nx,Ny,dx,dy,G4,A2s,A4s, a111, a112, a123, C2,q3,Q3,R2 = pars
+
+	QPP = zeros(6,Nx,Ny)
+	getQPP!(QPP,Q3,P0,Nx,Ny)
+	dedp = zeros(3,Nx,Ny)
+	ϵbasis = zeros(8,3,Nx,Ny)
+
+	if compat == true
+		get_ϵbestL_12!(ϵ0,ϵbasis,QPP,cc00,CL,ncsb,Nx,Ny,dx,dy,Lx,Ly,pmax,qmax,Cabm)
+	else
+		get_ϵbestL_no_compat!(ϵ0,QPP,Nx,Ny)
+	end
+
+	if testenergy == true
+		ED = zeros(Nx,Ny)
+		println("initial energy is ", energy2Del(P0, ϵ0, ED, G4, A2s, A4s, C2, q3, a111,a112,a123,0.0,R2,Nx, Ny, dx, dy) )
+	end
+
+	for c in 1:Nloops
+
+
+    	dEdP2Dsfel!(dedp,P0,ϵ0,Nx,Ny,dx,dy,G4,A2s,A4s,q3,R2, a111, a112, a123)
+   		
+   		for a in 1:3, i in 1:Nx, j in 1:Ny
+   			P0[a,i,j] -= dt*dedp[a,i,j]
+   		end
+
+   		#P0 .-= dt.*dedp
+
+   		#updateXbdy!(P0,Nx,Ny)
 
    		getQPP!(QPP,Q3,P0,Nx,Ny)
 
@@ -275,9 +379,9 @@ function makeSkyrmeLine(Nx,Ny,dx,dy,x,y,Ly,Rvac,PV)
     	P0[2,i,j] = 0.0
     	P0[3,i,j] = 0.0
     
-    	Pin[1,i,j] = sin(f(x[i]))*cos(y[j]*2.0*pi/Ly)
-    	Pin[2,i,j] = sin(f(x[i]))*sin(y[j]*2.0*pi/Ly)
-    	Pin[3,i,j] = cos(f(x[i]))
+    	Pin[1,i,j] = -sin(f(x[i]))*cos(y[j]*2.0*pi/Ly)
+    	Pin[2,i,j] = -sin(f(x[i]))*sin(y[j]*2.0*pi/Ly)
+    	Pin[3,i,j] = -cos(f(x[i]))
         
     	for a in 1:3, b in 1:3
         	P0[a,i,j] += Rvac[a,b]*Pin[b,i,j]

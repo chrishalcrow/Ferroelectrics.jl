@@ -1,24 +1,22 @@
-function simple_plot(p)
-
-	return plot(p)
-
-end
 
 
 
-function plot_eng(ED, x; 
+function plot_field(P; 
+	savefile = false,
+	filename = "temp.pdf",
 	scale::Float64=1.0,
-	xlimL = x[1],
-	xlimR = x[end],
-	ylimT = maximum(ED)*1.2,
-	ylimB = minimum(ED)*1.2,
+	xlimL = P.x[1],
+	xlimR = P.x[end],
+	ylimT = maximum(P.field)*1.2,
+	ylimB = minimum(P.field)*1.2,
 	titlename = "",
 	xtks = [],
 	ytks = []
 	)
 	
-	#GLMakie.activate!()
-	#CairoMakie.activate!()
+
+	
+	println(xtks)
 
     spcolor = RGBf(0.7,0.7,0.7)
 
@@ -44,31 +42,38 @@ function plot_eng(ED, x;
 	end
 
 	
-	lines!(ax, x, ED, linewidth=1.5*scale) 
+    xp = P.x
+	ys = [ P.field[a,:] for a in 1:3 ]
+
+	ps = [ lines!(ax, xp, ys[a], linewidth=1.5*scale) for a in 1:3 ] 
 
     ylims!(ax, ylimB, ylimT)
     xlims!(ax, xlimL, xlimR)
 
-	#=Legend(f1[1,2],
+	Legend(f1[1,2],
 	    framevisible = false,
 	    ps,
-	    ["Energy"],
+	    [L"P_1(s)",L"P_2(s)",L"P_3(s)"],
         padding = (0.0f0, 0.0f0, 0.0f0, 0.0f0),
 		linepoints = [Point2f(1.0-scale, 0.5), Point2f(1.0, 0.5)]
-    )=#
+    )
 	
    
    	colgap!(f1.layout,20*scale) 
+
+   	if savefile == true
+   		save(filename,f1)
+   		return
+   	end
 
     return f1
 	
 end
 
-
 function plot_field(phi, x; 
 	savefile = false,
 	filename = "temp.pdf",
-	scale::Float64=1.0,
+	scale::Float64=3.0,
 	xlimL = x[1],
 	xlimR = x[end],
 	ylimT = maximum(phi)*1.2,
@@ -78,8 +83,6 @@ function plot_field(phi, x;
 	ytks = []
 	)
 	
-	#GLMakie.activate!()
-	#CairoMakie.activate!()
 	
 	println(xtks)
 
