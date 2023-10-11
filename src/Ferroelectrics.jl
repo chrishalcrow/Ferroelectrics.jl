@@ -19,17 +19,19 @@ mutable struct Parameter
 	A4s::Array{Float64, 4}
 	rescaling::Float64
 	length_scale::Float64
+	is_electrostatic::Bool
 end
 
+mutable struct Grid
+	lp::Int64
+    ls::Float64
+    x::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}
+end
 
 mutable struct PolarisationField1D
     field::Matrix{Float64}
-    lp::Int64
-    ls::Float64
-    x::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}
+	grid::Grid
     parameters::Parameter
-	is_electrostatic::Bool
-	b::Float64
 end
 
 export PolarisationField1D, xyzfsrt, srtfxyz, inbfsrt, srtfinb
@@ -48,13 +50,13 @@ export changeAs, energy
 include("Diff.jl")
 export gradient_flow!
 
-PolarisationField1D(lp,ls,R2,material,b) = PolarisationField1D( zeros(3,lp), lp, ls, -ls*(lp - 1)/2.0 : ls : ls*(lp - 1)/2.0, set_parameters_lithium!(R2,material) , false, b)
 
+PolarisationField1D(lp,ls,R2,material;is_electrostatic=false) = PolarisationField1D( zeros(3,lp), setgrid(lp, ls), set_parameters_lithium!(R2,material, is_electrostatic))
 
 function setgrid(N,dx)
 	
 	println("grid has ", N, " points and goes from ", -0.5*dx*(N-1), " to ", 0.5*dx*(N-1))	
-	return -0.5*dx*(N-1):dx:0.5*dx*(N-1)
+	return Grid(N, dx, -0.5*dx*(N-1):dx:0.5*dx*(N-1) )
 	
 end
 

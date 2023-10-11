@@ -25,10 +25,10 @@ end
 
 function DipoleEnergy(P, sums, type, shift=2)
 	dipole_energy = 0.0
-	N = P.lp
+	N = P.grid.lp
 
 	if type == 1 # Approach #1: capacitor model. P.pars[10] should be abs(g1), energy calculation for the whole sample
-		dipole_energy = sum(P.field[1,(1+shift):(N-shift)].^2)*P.ls/(2*8.8541878128e-12*P.parameters.rescaling)
+		dipole_energy = sum(P.field[1,(1+shift):(N-shift)].^2)*P.grid.ls/(2*8.8541878128e-12*P.parameters.rescaling)
 	elseif type == 2 #Approach #2: interacting planes infinite in y direction and width b (P.b in code) in z direction. P.pars[10] should be abs(g1)
 		for i in (1+shift):(N-shift)
 			for j in i:(N-shift)
@@ -50,11 +50,11 @@ function DipoleEnergy(P, sums, type, shift=2)
 	return dipole_energy
 end
 
-function energy(P, sums, type=1, shift=2)
+function energy(P, sums; type=1, shift=2)
 	
-	ED = zeros(P.lp)
+	ED = zeros(P.grid.lp)
 	
-	Threads.@threads for i in (1+shift):(P.lp-shift)
+	Threads.@threads for i in (1+shift):(P.grid.lp-shift)
 
 		Ppt = getP(P,i)
 		DPpt = getDP(P,i)
@@ -62,31 +62,29 @@ function energy(P, sums, type=1, shift=2)
 		ED[i] = engpt(Ppt,DPpt, P.parameters)
 	end
 
-	total_energy = sum(ED)*P.ls
+	total_energy = sum(ED)*P.grid.ls
 
-	if P.is_electrostatic
+	if P.parameters.is_electrostatic
 		total_energy += DipoleEnergy(P, sums, type, shift)
 	end
 	
-
 	return total_energy
 
-	
 end
 
 function changeAs(P,sums,type,shift=2)
 	if P.is_electrostatic
-		N = P.lp
+		N = P.grid.lp
 	
 		P.field = zeros(3,N)
 		P.field[3,:] .= 1.0
-		A2 = DipoleEnergy(P, sums, type, shift)/((P.lp-2*shift)*P.ls)
+		A2 = DipoleEnergy(P, sums, type, shift)/((P.grid.lp-2*shift)*P.grid.ls)
 		P.parameters.A2t[3,3] -= A2   #correction to A2t
 		P.parameters.A2s[3,3] -= 2*A2 #correction to A2s
 
 		P.field = zeros(3,N)
 		P.field[1,:] .= 1.0
-		A2 = DipoleEnergy(P, sums, type, shift)/((P.lp-2*shift)*P.ls)
+		A2 = DipoleEnergy(P, sums, type, shift)/((P.grid.lp-2*shift)*P.grid.ls)
 		P.parameters.A2t[1,1] -= A2   #correction to A2t
 		P.parameters.A2s[1,1] -= 2*A2 #correction to A2s
 	end
@@ -94,7 +92,7 @@ end
 
 function EnergyANF(P, ED)
 	
-	Threads.@threads for i in 3:P.lp-2
+	Threads.@threads for i in 3:P.grid.lp-2
 
 		Ppt = getP(P,i)
 		DPpt = getDP(P,i)
@@ -103,7 +101,7 @@ function EnergyANF(P, ED)
 		
 	end
 	
-	return sum(ED)*P.ls
+	return sum(ED)*P.grid.ls
 	
 end
 
@@ -148,9 +146,9 @@ end
 
 
 function DWwidth(P)
-	for i in 2:P.lp
+	for i in 2:P.grid.lp
 		if P.field[3,i]*P.field[3,i-1] < 0
-			print("DW thickness ", round(1e9* P.parameters.length_scale *P.ls * 2. / abs(P.field[3,i - 1] - P.field[3,i]),digits=5)," nm")
+			print("DW thickness ", round(1e9* P.parameters.length_scale *P.grid.ls * 2. / abs(P.field[3,i - 1] - P.field[3,i]),digits=5)," nm")
 			break
 		end
 	end

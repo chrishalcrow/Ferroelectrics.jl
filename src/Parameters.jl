@@ -557,7 +557,7 @@ end
 =#
 
 
-function set_parameters_lithium!(R2, material)
+function set_parameters_lithium!(R2, material, is_electrostatic)
 	
 	#GLMakie.activate()
 	TT = zeros(6,3,3)
@@ -923,9 +923,13 @@ function set_parameters_lithium!(R2, material)
 		
 	println("the zero point energy is: ", PotEng(PV,A2t,A4t,V0))
 	
-	return Parameter(PV, V0, A2, A4, G2, A2t, A4t, getA2s(A2t), getA4s(A4t), abs(g1)#=*p0^2=#, length_scale)
+	return Parameter(PV, V0, A2, A4, G2, A2t, A4t, getA2s(A2t), getA4s(A4t), abs(g1)#=*p0^2=#, length_scale, is_electrostatic)
 	
 end
+
+
+
+
 
 
 

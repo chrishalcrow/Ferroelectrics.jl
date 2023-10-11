@@ -1,394 +1,5 @@
-function dEdu!(du,u,p,t)
-	
-	# p = (N,dx,G2,A2,A4,R2, a111, a112, a123)
-	
-	#dedp = zeros(3,p[1])
-	
-	
-	DDPpt = zeros(3)
-	Ppt = zeros(3)
-	
-    for i in 3:p[1]-2
-		for a in 1:3
-			du[a,i] = 0.0
-		end
-		
-		Ppt = getP(u,i)
-		getDDP!(DDPpt,u,i,p[2])
-		
-		for a in 1:3, b in 1:3
-			
-			du[a,i] -= -p[3][a,b]*DDPpt[b]
-			
-			du[a,i] -= (p[4][a,b] + p[4][b,a])*Ppt[b]
-			
-			for c in 1:3, d in 1:3
-				du[a,i] -= (p[5][a,b,c,d] + p[5][b,a,c,d] + p[5][b,c,a,d] + p[5][b,c,d,a])*Ppt[b]*Ppt[c]*Ppt[d]
-			end
-			
-		end
-			
-		du[:,i] .-= p[6]*dV6(p[6]'*Ppt,p[7], p[8], p[9])
 
-    end
-end
-
-function dEduf!(du,u,p,t)
-	
-	#N,dx,G2,A2,A4,R2, a111, a112, a123 = p
-	
-	#dedp = zeros(3,p[1])
-	
-	
-	DDPpt = zeros(3)
-	Ppt = zeros(3)
-	dD6 = zeros(3)
-	R2Pt = zeros(3)
-	
-    @inbounds for i in 3:p[1]-2
-		
-		Ppt[1] = u[1,i] 
-		Ppt[2] = u[2,i] 
-		Ppt[3] = u[3,i] 
-
-		getDDP!(DDPpt,u,i,p[2])
-		
-		for a in 1:3
-			
-			du[a,i] = 0.0
-			R2Pt[a] = 0.0 
-
-			for  b in 1:3
-
-				R2Pt[a] += p[6][b,a]*Ppt[b]
-
-				du[a,i] -= -p[3][a,b]*DDPpt[b]
-				
-				du[a,i] -= 2.0*(p[4][a,b])*Ppt[b]
-				
-				for c in 1:3, d in 1:3
-					du[a,i] -= 4.0*p[5][a,b,c,d]*Ppt[b]*Ppt[c]*Ppt[d]
-				end
-
-			end
-			
-		end
-
-		dD6[1] = d1V6(R2Pt, p[7], p[8], p[9])
-		dD6[2] = d2V6(R2Pt, p[7], p[8], p[9])
-		dD6[3] = d3V6(R2Pt, p[7], p[8], p[9])
-
-		for a in 1:3, b in 1:3
-
-			du[a,i] -= p[6][a,b]*dD6[b]
-			
-		end
-			
-
-    end
-end
-
-
-
-function dpot(Ppt, A2,A4,R2, a111, a112, a123)
-
-
-	du = zeros(3)
-	R2Pt = zeros(3)
-	dD6 = zeros(3)
-
-	for a in 1:3
-			
-		du[a] = 0.0
-		R2Pt[a] = 0.0 
-
-		for  b in 1:3
-
-			R2Pt[a] += R2[b,a]*Ppt[b]
-			
-			du[a] -= (A2[b,a] + A2[a,b])*Ppt[b]
-			
-			for c in 1:3, d in 1:3
-				du[a] -= (A4[a,b,c,d]+A4[b,a,c,d] + A4[b,c,a,d] + A4[b,c,d,a])*Ppt[b]*Ppt[c]*Ppt[d]
-			end
-
-		end
-		
-	end
-
-	dD6[1] = d1V6(R2Pt, a111, a112, a123)
-	dD6[2] = d2V6(R2Pt, a111, a112, a123)
-	dD6[3] = d3V6(R2Pt, a111, a112, a123)
-
-	for a in 1:3, b in 1:3
-
-		du[a] -= R2[a,b]*dD6[b]
-		
-	end
-
-	return du
-
-end
-
-
-
-function dEduff!(du,u,p,t)
-	
-	N,dx,G2,A2,A4,R2, a111, a112, a123,tf,EList,V0, DDPpt, Ppt, dD6, R2Pt = p
-	
-	#if(t==0)
-#		println(a111, a112, a123)
-#	end
-	
-	
-	#DDPpt = zeros(3)
-	#Ppt = zeros(3)
-	#dD6 = zeros(3)
-	#R2Pt = zeros(3)
-	
-    for i in 3:N-2
-		
-		Ppt[1] = u[1,i] 
-		Ppt[2] = u[2,i] 
-		Ppt[3] = u[3,i] 
-
-		getDDP!(DDPpt,u,i,p[2])
-		
-		for a in 1:3
-			
-			du[a,i] = 0.0
-			R2Pt[a] = 0.0 
-
-			for  b in 1:3
-
-				R2Pt[a] += R2[b,a]*Ppt[b]
-
-				du[a,i] += G2[a,b]*DDPpt[b]
-				
-				du[a,i] -= 2.0*(A2[a,b])*Ppt[b]
-				
-				for c in 1:3, d in 1:3
-					du[a,i] -= 4.0*A4[a,b,c,d]*Ppt[b]*Ppt[c]*Ppt[d]
-				end
-
-			end
-			
-		end
-
-		dD6[1] = d1V6(R2Pt, a111, a112, a123)
-		dD6[2] = d2V6(R2Pt, a111, a112, a123)
-		dD6[3] = d3V6(R2Pt, a111, a112, a123)
-
-		for a in 1:3, b in 1:3
-
-			du[a,i] -= R2[a,b]*dD6[b]
-			
-		end
-
-		#if(t==0)
-	#		println(du[1,i], ", ")
-	#	end
-			
-
-    end
-end
-
-
-
-	
-
-
-function affect_checkeng!(integrator)
-    
-    n = floor(Int,round(integrator.t))
-
-    ED = zeros(integrator.p[1])
-    
-    integrator.p[11][n] = energy(integrator.u, ED, integrator.p[2], integrator.p[1], integrator.p[6], integrator.p[3], integrator.p[4], integrator.p[5], integrator.p[7], integrator.p[8], integrator.p[9], integrator.p[12]) 
-    
-
-    #println("energy at t = ", integrator.t, " is ", integrator.p[11][n] )
-
-    if n > 3 && abs(integrator.p[11][n] - integrator.p[11][n-1]) < 10.0^(-8)
-        terminate!(integrator)
-        integrator.p[11][(n+1):integrator.p[10]] .= integrator.p[11][n]
-    end
-
-end
-
-
-
-function flowRAK!(phi,p)
-    
-	tf = p[10]
-    EList = zeros(tf)
-
-	# p = (N,dx,G2,A2,A4,R2, a111, a112, a123,tf,EList,V0)
-
-    tspan = (0.0, tf)
-    engtimes = [ 1.0*i for i=1:tf ]
-
-    cb = PresetTimeCallback(engtimes, affect_checkeng!, save_positions=(false,false))
-
-    prob = ODEProblem(dEduf!,phi,tspan,p)
-	sol = solve(prob, Tsit5(),reltol=1e-8, abstol=1e-8, save_everystep=false, callback=cb )
-    #sol = solve(prob, Tsit5(),reltol=1e-8, abstol=1e-8, save_everystep=true, callback=cb, tstops = engtimes )
-
-    #if sol.t[end] == tf
-    #   println("AGGGG");
-    #else
-    #    println(sol.t[end])
-    #end
-
-    return sol[end]
-    
-end
-
-
-function flowRAKf!(phi,q)
-    
-	#ED = zeros(integrator.p[1])
-
-	
-    #EList = zeros(tf)
-
-    DDPpt = zeros(3)
-    Ppt = zeros(3)
-    dD6 = zeros(3)
-    R2Pt = zeros(3)
-
-	p = (q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8], q[9], q[10], q[11], q[12], DDPpt, Ppt, dD6, R2Pt)
-
-	tf = p[10]
-
-	# p = (N,dx,G2,A2,A4,R2, a111, a112, a123,tf,EList,V0, ED)
-
-    tspan = (0.0, tf)
-    engtimes = [ 1.0*i for i=1:tf ]
-
-    cb = PresetTimeCallback(engtimes, affect_checkengf!, save_positions=(false,false))
-
-    prob = ODEProblem(dEduff!,phi,tspan,p)
-	sol = solve(prob, Tsit5(),reltol=1e-8, abstol=1e-8, save_everystep=false, callback=cb )
-    #sol = solve(prob, Tsit5(),reltol=1e-8, abstol=1e-8, save_everystep=true, callback=cb, tstops = engtimes )
-
-    if sol.t[end] == tf
-       println("AGGGG");
-    else
-        println(sol.t[end])
-    end
-
-    return sol[end]
-    
-end
-
-
-
-function affect_checkengf!(integrator)
-    
-    n = floor(Int,round(integrator.t))
-
-    integrator.p[11][n] = energyNOED(integrator.u, integrator.p[2], integrator.p[1], integrator.p[6], integrator.p[3], integrator.p[4], integrator.p[5], integrator.p[7], integrator.p[8], integrator.p[9], integrator.p[12]) 
-
-
-    if n > 3 && abs(integrator.p[11][n] - integrator.p[11][n-1]) < 10.0^(-8)
-        terminate!(integrator)
-        integrator.p[11][(n+1):integrator.p[10]] .= integrator.p[11][n]
-    end
-
-end
-
-
-
-
-
-
-
-
-
-
-
-
-function dEdP(P,N,dx,G2,A2,A4)
-
-	dedp = zeros(3,N)	
-
-	for i in 3:N-2
-
-		
-		DDPpt = zeros(3)
-		
-		Ppt = [P[1,i], P[2,i], P[3,i] ]
-		getDDP!(DDPpt,P,i,dx)
-			
-		for a in 1:3, b in 1:3
-		
-			dedp[a,i] += -G2[a,b]*DDPpt[b]
-			
-			dedp[a,i] += (A2[a,b] + A2[b,a])*Ppt[b]
-			
-			for c in 1:3, d in 1:3
-				dedp[a,i] += (A4[a,b,c,d] + A4[b,a,c,d] + A4[b,c,a,d] + A4[b,c,d,a])*Ppt[b]*Ppt[c]*Ppt[d]
-			end
-			
-		end
-		
-	end
-	
-	return dedp
-	
-end
-
-
-
-
-
-
-
-function dEdP(P)
-
-	dedp = zeros(3,P.lp)
-
-	G2 = P.parameters.G2
-	A2t = P.parameters.A2t
-	A4t = P.parameters.A4t
-
-	A4s = zeros(3,3,3,3)
-	for a in 1:3, b in 1:3, c in 1:3, d in 1:3
-		A4s[a,b,c,d] = A4t[a,b,c,d] + A4t[b,a,c,d] + A4t[b,c,a,d] + A4t[b,c,d,a]
-	end
-	A2s = zeros(3,3)
-	for a in 1:3, b in 1:3
-		A2s[a,b] = A2t[a,b] + A2t[b,a]
-	end
-
-	Threads.@threads for i in 3:P.lp-2
-
-		Ppt = getP(P,i)
-		DDPpt = getDDP(P,i)
-					
-		for a in 1:3, b in 1:3
-		
-			dedp[a,i] += -G2[a,b]*DDPpt[b]
-			dedp[a,i] += A2s[a,b]*Ppt[b]
-			
-			for c in 1:3, d in 1:3
-				dedp[a,i] += (A4s[a,b,c,d])*Ppt[b]*Ppt[c]*Ppt[d]
-			end
-			
-		end
-		
-	end
-	
-	return dedp
-	
-end
-
-
-
-
-
-function gradient_flow!(P, sums, type, shift=2; steps = 1, dt = P.ls/500.0, tolerance = 0.0, checks = max(100,steps), print_stuff = true, dEdp = zeros(3,P.lp) )
+function gradient_flow!(P, sums; type=1, shift=2, steps = 1, dt = P.grid.ls/500.0, tolerance = 0.0, checks = max(100,steps), print_stuff = true, dEdp = zeros(3,P.grid.lp) )
 
 
     if tolerance == 0 && checks > steps
@@ -396,7 +7,7 @@ function gradient_flow!(P, sums, type, shift=2; steps = 1, dt = P.ls/500.0, tole
     end
     
     if print_stuff == true
-        println("initial: energy: ", energy(P,sums,type,shift) )
+        println("initial: energy: ", energy(P,sums,type=type,shift=shift) )
     end
 
     counter = 0
@@ -434,7 +45,7 @@ function gradient_flow!(P, sums, type, shift=2; steps = 1, dt = P.ls/500.0, tole
     end
 
     if print_stuff == true
-        println("final energy: ", energy(P,sums,type,shift) )
+        println("final energy: ", energy(P,sums,type=type,shift=shift) )
     end
 
     return
@@ -480,7 +91,7 @@ function getdEdP!(P,dedp,sums,type)
 	A4s = P.parameters.A4s
 	norm = P.parameters.rescaling
 
-	Threads.@threads for i in 3:P.lp-2
+	Threads.@threads for i in 3:P.grid.lp-2
 
 		@inbounds for a in 1:3
 			dedp[a,i] = 0.0
@@ -501,8 +112,8 @@ function getdEdP!(P,dedp,sums,type)
 		end
 		
 	end
-	if P.is_electrostatic
-		N = P.lp
+	if P.parameters.is_electrostatic
+		N = P.grid.lp
 		# Approach #1: capacitor model. P.pars[10] should be abs(g1), energy calculation for the whole sample
 		if type == 1
 			Threads.@threads for i in 3:N-2
@@ -515,10 +126,10 @@ function getdEdP!(P,dedp,sums,type)
 				for j in 3:N-2
 					sum += [2*P.field[1,j]*sums[1,abs(i-j)+1],      0, 		2*P.field[3,j]*sums[2,abs(i-j)+1]]
 				end
-				dedp[:,i] += sum*P.b/(4*pi*8.8541878128e-12*norm*P.ls) #in denominator P.ls, because gradient is computed for energy density (J/m^3)
+				dedp[:,i] += sum*P.b/(4*pi*8.8541878128e-12*norm*P.grid.ls) #in denominator P.ls, because gradient is computed for energy density (J/m^3)
 			end
 		elseif type == 3
-			dedp[1:2:3, 3:N-2] += 2*real(FastLinearConvolutionGradient(P.field[1:2:3,3:N-2],sums[:,1:N-4],2)[:,1:N-4])*P.b/(4*pi*8.8541878128e-12*norm*P.ls)
+			dedp[1:2:3, 3:N-2] += 2*real(FastLinearConvolutionGradient(P.field[1:2:3,3:N-2],sums[:,1:N-4],2)[:,1:N-4])*P.b/(4*pi*8.8541878128e-12*norm*P.grid.ls)
 	
 		end
 	end
@@ -542,19 +153,19 @@ Applies an arrested Newton flow to `skyrmion` whose initial time derivative fiel
 
 See also [`gradient_flow!`, `newton_flow!`]
 """
-function arrested_newton_flow!(ϕ; ϕd=zeros(3, ϕ.lp), dt=ϕ.ls/50.0, steps=1, tolerance = 0.0, checks = max(100,steps), print_stuff = true)
+function arrested_newton_flow!(ϕ; ϕd=zeros(3, ϕ.grid.lp), dt=ϕ.grid.ls/50.0, steps=1, tolerance = 0.0, checks = max(100,steps), print_stuff = true)
 
     if tolerance == 0 && checks > steps
         checks = steps
     end
 
-    energy_density = zeros(ϕ.lp)
+    energy_density = zeros(ϕ.grid.lp)
     old_field = deepcopy(ϕ.field);
 
-    dEdp = zeros(3, ϕ.lp)
-    dEdp2 = zeros(3, ϕ.lp)
-    dEdp3 = zeros(3, ϕ.lp)
-    dEdp4 = zeros(3, ϕ.lp)
+    dEdp = zeros(3, ϕ.grid.lp)
+    dEdp2 = zeros(3, ϕ.grid.lp)
+    dEdp3 = zeros(3, ϕ.grid.lp)
+    dEdp4 = zeros(3, ϕ.grid.lp)
     ϕ2 = deepcopy(ϕ)
 
 
@@ -566,7 +177,7 @@ function arrested_newton_flow!(ϕ; ϕd=zeros(3, ϕ.lp), dt=ϕ.ls/50.0, steps=1, 
         counter += checks
 
         if print_stuff == true 
-            println("after ", counter, " steps, error = ", round(error, sigdigits=4), " energy = ", round(sum(energy_density)*ϕ.ls, sigdigits=8) )
+            println("after ", counter, " steps, error = ", round(error, sigdigits=4), " energy = ", round(sum(energy_density)*ϕ.grid.ls, sigdigits=8) )
             #println( round(error, sigdigits=8), "," )
         end
 
